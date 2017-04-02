@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8"/>
+        
+    </head>
+    <!--This is the double SHA 256 version-->
+    <body onLoad="document.getElementById('myButton').focus();">
+
+        <h1>Please enter a hexidecimal value to hash in  double SHA-256:</h1>
+        <p>
+            <button onclick="displayHash()">Hash!</button>
+            <input type="text" id="userBox" />
+        </p>
+
+
+        <script type="text/javascript">
+
+            function displayHash() {
+                var key = parseInt((document.getElementById('userBox').value).replace('0x', ''), 16);
+                /*
+                var key = document.getElementById('userBox').value;
+
+                if (key startswith "0x") {
+                    remove the "0x"
+                }
+                  
+                 
+                k = hexidecimal number value of k
+                */
+
+                document.write("<h3>Hash of " + key.toString() + " is </h3>");
+                var result = hash(+key);
+                document.write("<br/><h4>In hexidecimal: " + result.toString(16) + "</h4>");
+                document.write("<br/><h4>In decimal: " + result.toString() + "</h4>");
+                document.write("<br/><h4>In binary: " + result.toString(2) + "</h4>");
+
+
+            }
+
+            // For the SHA-256, this will be the actual hash implementation
+            function hash(input) {
+                return (input + 1);
+            }
+
+            // The rest of this is double SHA 256
+
+        </script>
+        <!--
+            <h2>Result: </h2>
+        -->
+
+    </body>
+
+</html>

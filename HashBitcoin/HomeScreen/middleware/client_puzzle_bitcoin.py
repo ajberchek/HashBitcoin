@@ -9,8 +9,10 @@ import binascii
 import os
 import struct
 
-clientDifficultyLevel = 4
+clientDifficultyLevel = 3
 btcStalenessMillis = 10000
+puzzleExpireTime = 10000
+
 current_milli_time = lambda: int(round(time.time() * 1000))
 
 #below merkle function taken from: http://www.righto.com/2014/02/bitcoin-mining-hard-way-algorithms.html
@@ -36,7 +38,7 @@ def hash2(a, b):
 class ClientPuzzleBitcoinMiddleware(object):
     def __init__(self,get_response):
         self.get_response = get_response
-        self.puzzleExpireTime = 10000
+        self.puzzleExpireTime = puzzleExpireTime
         self.extraNonce1 = 0
         self.extraNonce2Size = 0
         self.jobID = 0
@@ -55,9 +57,7 @@ class ClientPuzzleBitcoinMiddleware(object):
     def __call__(self,request):
         #todo change request.session to request.POST.get("solution") which should have the client's response
         #todo or just set the requst.session.solution to be the request.POST.get("solution")
-        print(request.session.items())
-        if(request.session.get("solution",None) is not None):
-            if(request.session.get("SolutionRecvdTime",None) is not None):
+        if(request.session.get("SolutionRecvdTime",None) is not None):
                 #We have already received this solution lets see if it has expired
                 if(request.session.get("SolutionRecvdTime") + self.puzzleExpireTime > current_milli_time()):
                     #solution is still valid, you shall pass
@@ -66,32 +66,46 @@ class ClientPuzzleBitcoinMiddleware(object):
                 else:
                     del request.session["SolutionRecvdTime"]
                     self.giveClientMiningData(request)
+                    print("Client just expired")
                     #response = http message with code to do the client puzzle
                     #solution is no longer valid, needs to reauth
                     #it will do that in the code below this outermost if statement
-            else:
+        else:
+            if(request.method == "POST" and request.POST.get("PuzzleNonce",None) is not None):
                 #Check users solution
-                if(request.session.get("solution") == "hi"):
+                puzzleNonce = request.POST.get("PuzzleNonce")
+                completeNonce = request.session.get("NoncePrefix") + puzzleNonce
+                TotalHeader = request.session.get("TotalPacked") + completeNonce
+                #print("Total Packed: " + str(TotalHeader))
+
+                hashedData = hashlib.sha256(hashlib.sha256(binascii.unhexlify(TotalHeader)).digest()).digest()
+                hashedData = binascii.hexlify(hashedData)
+                print("Hashed Data: " + str(hashedData))
+                #print("Hashed data int: " + str(int(hashedData,16)) + " modded: " + str(int(hashedData,16) % (16**clientDifficultyLevel)))
+
+
+                if(int(hashedData,16) % (16**clientDifficultyLevel) == 0):
                     #solution is valid
                     #set recvd time
+                    print("VALID")
                     print("added time")
 
                     request.session["SolutionRecvdTime"] = current_milli_time()
                     return self.get_response(request)
                 else:
+                    print("Invalid hash")
                     self.giveClientMiningData(request)
                     #response = http message with code to do the client puzzle
                     #solution is invalid, resend
                     #it will do this in the code below this outermost if statment
+        if(request.session.get("SolutionRecvdTime",None) is None):
+            print("No solution recvd time")
+            cont = {"TotalPacked": request.session.get("TotalPacked"), "NoncePrefix" : request.session.get("NoncePrefix"), "NZeros" : clientDifficultyLevel}
+            return render(context=cont, request=request, template_name='Client.html')
 
-        print("Here have a cookie!")
-        request.session["solution"] = "hi"
-        print(request.session.items())
-        response = HttpResponse("Refresh the page to get access!")
+        print("Made it to the very outside")
+        return self.get_response(request)
 
-        print("LALALA")
-        cont = {"TotalPacked": request.session.get("TotalPacked"), "NoncePrefix" : request.session.get("NoncePrefix"), "NZeros" : clientDifficultyLevel}
-        return render(context=cont, request=request, template_name='hashTool.html')
 
     def computeCoinbaseVals(self):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -164,7 +178,6 @@ class ClientPuzzleBitcoinMiddleware(object):
 
 
         clientsTarget = '0'*clientDifficultyLevel + 'F'*(64-clientDifficultyLevel)
-        print(clientsTarget)
 
 
 

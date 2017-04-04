@@ -65,7 +65,6 @@ class ClientPuzzleBitcoinMiddleware(object):
                     return self.get_response(request)
                 else:
                     del request.session["SolutionRecvdTime"]
-                    self.giveClientMiningData(request)
                     print("Client just expired")
                     #response = http message with code to do the client puzzle
                     #solution is no longer valid, needs to reauth
@@ -94,13 +93,14 @@ class ClientPuzzleBitcoinMiddleware(object):
                     return self.get_response(request)
                 else:
                     print("Invalid hash")
-                    self.giveClientMiningData(request)
                     #response = http message with code to do the client puzzle
                     #solution is invalid, resend
                     #it will do this in the code below this outermost if statment
         if(request.session.get("SolutionRecvdTime",None) is None):
             print("No solution recvd time")
+            self.giveClientMiningData(request)
             cont = {"TotalPacked": request.session.get("TotalPacked"), "NoncePrefix" : request.session.get("NoncePrefix"), "NZeros" : clientDifficultyLevel}
+            print(cont)
             return render(context=cont, request=request, template_name='Client.html')
 
         print("Made it to the very outside")
@@ -144,6 +144,7 @@ class ClientPuzzleBitcoinMiddleware(object):
 
 
     def giveClientMiningData(self,request):
+        print("client mining data")
 
         if(self.lastCoinbaseCheck + btcStalenessMillis < current_milli_time()):
             self.computeCoinbaseVals()

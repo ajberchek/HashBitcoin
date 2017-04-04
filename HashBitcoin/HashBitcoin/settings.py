@@ -23,9 +23,9 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECRET_KEY = 'hkidg5*=b&*dh-3gpo+)2@azp+rhp9m#8@5c$)a$p#(bdevl7r'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [u'hack.amorgan.xyz',u'127.0.0.1']
 
 
 # Application definition

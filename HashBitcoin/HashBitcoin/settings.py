@@ -47,6 +47,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'HomeScreen.middleware.client_puzzle_bitcoin.ClientPuzzleBitcoinMiddleware',
 ]
 
 ROOT_URLCONF = 'HashBitcoin.urls'

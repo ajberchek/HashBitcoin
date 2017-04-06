@@ -43,7 +43,6 @@ class ClientPuzzleBitcoinMiddleware(object):
         return response
 
     def getBtcVals(self):
-        user = "btcminer4242"
-        passwd = "Ne$2jC(dB0"
+        user = "btcminer4242.worker1"
 
 

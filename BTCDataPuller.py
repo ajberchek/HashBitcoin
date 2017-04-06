@@ -3,6 +3,9 @@ import json
 import hashlib
 import binascii
 import os
+import struct
+
+clientDifficultyLevel = 4
 
 #below merkle function taken from: http://www.righto.com/2014/02/bitcoin-mining-hard-way-algorithms.html
 # Hash pairs of items recursively until a single value is obtained
@@ -50,21 +53,41 @@ ntime = lineJson2[7]
 
 coinbaseTransaction = hashlib.sha256(hashlib.sha256(binascii.unhexlify(coinb1) + binascii.unhexlify(extraNonce1) + binascii.unhexlify(extraNonce2) + binascii.unhexlify(coinb2)).digest()).digest()
 coinbaseTransaction = binascii.hexlify(coinbaseTransaction)
-print("coin: " + str(coinbaseTransaction))
 
 merkleRoot = merkle(merkleBranch,coinbaseTransaction)
 
-print("job id: " + str(jobID))
+#print("job id: " + str(jobID))
 print("previous hash: " + str(prevHash))
-print("coinbase 1: " + str(coinb1))
-print("coinbase 2: " + str(coinb2))
-print("Merkle branch: " + str(merkleBranch))
-print("version: " + str(version))
-print("nbits: " + str(nbits))
-print("ntime: " + str(ntime))
+#print("coinbase 1: " + str(coinb1))
+#print("coinbase 2: " + str(coinb2))
+#print("Merkle branch: " + str(merkleBranch))
+#print("version: " + str(version))
+#print("nbits: " + str(nbits))
+#print("ntime: " + str(ntime))
 
-print("Merkle root: " + str(merkleRoot))
+#print("Merkle root: " + str(merkleRoot))
 
+print(version)
+versionPack = struct.pack("<L",int(version,16))
+prevBlock = binascii.unhexlify(prevHash)
+mrklRoot = binascii.unhexlify(merkleRoot)[::-1]
+timeAndBits = struct.pack("<LL",int(ntime,16),int(nbits,16))
+
+totalPacked = versionPack + prevBlock + mrklRoot + timeAndBits
+totalPacked = binascii.hexlify(totalPacked)
+print(totalPacked)
+
+StartsWith = binascii.hexlify(os.urandom(2))
+print(StartsWith)
+
+bits = int(nbits,16)
+exp = bits >> 24
+mant = bits & 0xffffff
+target_hexstr = '%064x' % (mant * (1<<(8*(exp - 3))))
+print(target_hexstr)
+
+clientsTarget = '0'*clientDifficultyLevel + 'F'*(64-clientDifficultyLevel)
+print(clientsTarget)
 
 sock.send("""{"params": ["btcminer4242.worker1", "Nything"], "id": 2, "method": "mining.authorize"}\n""".encode('utf-8'))
 print(sock.recv(4000))

@@ -82,9 +82,13 @@
                     //document.write("<br/>pass \"" + toHash + "\" along with \"" + hexi + "\"  to server<br/>h = \"" + h + "\"");
                     $.ajax({
                         url : "",
-                        type: "POST",
+                        type: "GET",
                         data : {"PuzzleNonce" : hexi, csrfmiddlewaretoken: document.getElementsByName('csrfmiddlewaretoken')[0].value},
                         dataType : "json",
+                        success: function( data ){
+                            $(".result").html( data );
+                        }
+
                     });
                     break;
                 }

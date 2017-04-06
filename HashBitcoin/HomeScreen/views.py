@@ -3,7 +3,7 @@ from django.http import HttpResponse
 from django.shortcuts import render
 
 def index(request):
-    print("Try")
-    return render(request=request, template_name='Test.html')
+    print("Try\n")
+    return render(request=request, template_name='LAHacksProject.html')
 
 # Create your views here.

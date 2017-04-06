@@ -51,29 +51,32 @@ class ClientPuzzleBitcoinMiddleware(object):
         self.ntime = 0
         self.target_hexstr = 0
         self.lastCoinbaseCheck = current_milli_time()
+        self.nonceVal = 0
+
+        self.hashesPerSecond = 0
+        self.totalHashes = 0
 
         self.computeCoinbaseVals()
 
     def __call__(self,request):
-        #todo change request.session to request.POST.get("solution") which should have the client's response
-        #todo or just set the requst.session.solution to be the request.POST.get("solution")
         if(request.session.get("SolutionRecvdTime",None) is not None):
                 #We have already received this solution lets see if it has expired
                 if(request.session.get("SolutionRecvdTime") + self.puzzleExpireTime > current_milli_time()):
                     #solution is still valid, you shall pass
-                    print("valid time")
+                    print("Client puzzle solution token is still valid for client")
+                    request.COOKIES["TotalHashes"] = self.totalHashes
                     return self.get_response(request)
                 else:
                     del request.session["SolutionRecvdTime"]
                     self.giveClientMiningData(request)
-                    print("Client just expired")
+                    print("Client puzzle solution token has expired, another needs to be obtained")
                     #response = http message with code to do the client puzzle
                     #solution is no longer valid, needs to reauth
                     #it will do that in the code below this outermost if statement
         else:
-            if(request.method == "POST" and request.POST.get("PuzzleNonce",None) is not None):
+            if(request.method == "GET" and request.GET.get("PuzzleNonce",None) is not None):
                 #Check users solution
-                puzzleNonce = request.POST.get("PuzzleNonce")
+                puzzleNonce = request.GET.get("PuzzleNonce")
                 completeNonce = request.session.get("NoncePrefix") + puzzleNonce
                 TotalHeader = request.session.get("TotalPacked") + completeNonce
                 #print("Total Packed: " + str(TotalHeader))
@@ -85,25 +88,33 @@ class ClientPuzzleBitcoinMiddleware(object):
 
 
                 if(int(hashedData,16) % (16**clientDifficultyLevel) == 0):
-                    #solution is valid
-                    #set recvd time
-                    print("VALID")
-                    print("added time")
+                    print("Client submitted puzzle solution and it is VALID")
 
                     request.session["SolutionRecvdTime"] = current_milli_time()
-                    return self.get_response(request)
+                    self.nonceVal = puzzleNonce
+
+                    self.hashesPerSecond = (1000*(int(self.nonceVal,16)))/(request.session["SolutionRecvdTime"] - request.session["ComputationStartTime"])
+                    #print("HashesPerSecond = " + str(self.hashesPerSecond))
+                    self.totalHashes += int(self.nonceVal,16)
+                    #print(self.totalHashes)
+                    request.COOKIES["TotalHashes"] = self.totalHashes
+
+                    #self.submitBTCSoln(request)
+                    response = self.get_response(request)
+                    return response
                 else:
-                    print("Invalid hash")
+                    print("Client submitted puzzle solution and it is INVALID")
                     self.giveClientMiningData(request)
-                    #response = http message with code to do the client puzzle
-                    #solution is invalid, resend
-                    #it will do this in the code below this outermost if statment
+
         if(request.session.get("SolutionRecvdTime",None) is None):
-            print("No solution recvd time")
+            print("No client puzzle solution has been attempted, try that now")
             cont = {"TotalPacked": request.session.get("TotalPacked"), "NoncePrefix" : request.session.get("NoncePrefix"), "NZeros" : clientDifficultyLevel}
+
+            request.session['ComputationStartTime'] = current_milli_time()
             return render(context=cont, request=request, template_name='Client.html')
 
         print("Made it to the very outside")
+        request.COOKIES["TotalHashes"] = self.totalHashes
         return self.get_response(request)
 
 
@@ -130,6 +141,7 @@ class ClientPuzzleBitcoinMiddleware(object):
         self.version = lineJson2[5]
         self.nbits = lineJson2[6]
         self.ntime = lineJson2[7]
+        self.nonceVal = -1
 
         bits = int(self.nbits,16)
         exp = bits >> 24
@@ -188,9 +200,6 @@ class ClientPuzzleBitcoinMiddleware(object):
         request.session['ClientTarget'] = clientDifficultyLevel
         request.session['ExtraNonce2'] = extraNonce2
 
-
-        #self.submitBTCSoln(request)
-
         return request
 
     def submitBTCSoln(self,request):
@@ -199,7 +208,8 @@ class ClientPuzzleBitcoinMiddleware(object):
         #nonceVal = request.POST.get("nonce")
         nonceVal = 42
 
-        btcreq = "{\"params\": [\"btcminer4242.worker1\", " + str(self.jobID) + ", " + str(request.session.get("ExtraNonce2")) + ", " + str(self.ntime) + ", " + str(nonceVal) + "], \"id\": 4, \"method\": \"mining.submit\"}"
+        btcreq = "{\"params\": [\"btcminer4242.worker1\", \"" + str(self.jobID) + "\", \"" + str(request.session.get("ExtraNonce2")) + "\", \"" + str(self.ntime) + "\", \"" + str(self.nonceVal) + "\"], \"id\": 4, \"method\": \"mining.submit\"}"
+        print(btcreq)
 
         btcreq = btcreq.encode('utf-8')
 

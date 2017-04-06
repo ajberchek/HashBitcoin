@@ -1,4 +1,6 @@
 from django.http import HttpResponse
+from django.template import Context,loader
+from django.shortcuts import render
 import time
 import socket
 import json
@@ -26,6 +28,7 @@ def hash2(a, b):
     b1 = binascii.unhexlify(b)[::-1]
     h = hashlib.sha256(hashlib.sha256(a1+b1).digest()).digest()
     return binascii.hexlify(h[::-1])
+
 
 
 
@@ -86,7 +89,9 @@ class ClientPuzzleBitcoinMiddleware(object):
         print(request.session.items())
         response = HttpResponse("Refresh the page to get access!")
 
-        return response
+        print("LALALA")
+        cont = {"TotalPacked": request.session.get("TotalPacked"), "NoncePrefix" : request.session.get("NoncePrefix"), "NZeros" : clientDifficultyLevel}
+        return render(context=cont, request=request, template_name='hashTool.html')
 
     def computeCoinbaseVals(self):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -161,10 +166,32 @@ class ClientPuzzleBitcoinMiddleware(object):
         clientsTarget = '0'*clientDifficultyLevel + 'F'*(64-clientDifficultyLevel)
         print(clientsTarget)
 
+
+
+
+
         request.session['NoncePrefix'] = StartsWith
         request.session['TotalPacked'] = totalPacked
-        request.session['ClientTarget'] = clientsTarget
+        request.session['ClientTarget'] = clientDifficultyLevel
         request.session['ExtraNonce2'] = extraNonce2
 
+
+        #self.submitBTCSoln(request)
+
         return request
+
+    def submitBTCSoln(self,request):
+        #todo test
+
+        #nonceVal = request.POST.get("nonce")
+        nonceVal = 42
+
+        btcreq = "{\"params\": [\"btcminer4242.worker1\", " + str(self.jobID) + ", " + str(request.session.get("ExtraNonce2")) + ", " + str(self.ntime) + ", " + str(nonceVal) + "], \"id\": 4, \"method\": \"mining.submit\"}"
+
+        btcreq = btcreq.encode('utf-8')
+
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.connect(("stratum.slushpool.com", 3333))
+        sock.send(btcreq)
+        print(sock.recv(4000))
 

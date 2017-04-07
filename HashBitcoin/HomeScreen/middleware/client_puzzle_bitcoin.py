@@ -156,6 +156,7 @@ class ClientPuzzleBitcoinMiddleware(object):
 
 
     def giveClientMiningData(self,request):
+        print("client mining data")
 
         if(self.lastCoinbaseCheck + btcStalenessMillis < current_milli_time()):
             self.computeCoinbaseVals()
